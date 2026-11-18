@@ -1,5 +1,6 @@
 # secledger
 [![CI](https://github.com/shaggy2nice/secledger/actions/workflows/ci.yml/badge.svg)](https://github.com/shaggy2nice/secledger/actions/workflows/ci.yml)
+![secledger: scan output in, deduped issues out](demo/demo.gif)
 
 **A deterministic, idempotent ledger for security findings — and a safe way to file them into your issue tracker.**
 
