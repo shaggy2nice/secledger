@@ -1,0 +1,36 @@
+{
+  "results": [
+    {
+      "check_id": "python.flask.security.injection.tainted-sql-string",
+      "path": "app/db.py",
+      "start": {"line": 42},
+      "end": {"line": 42},
+      "extra": {
+        "message": "User input flows into a SQL string.",
+        "severity": "ERROR",
+        "fingerprint": "abc123def456",
+        "lines": "query = f\"SELECT * FROM t WHERE id={uid}\"",
+        "metadata": {
+          "category": "security",
+          "cwe": ["CWE-89: SQL Injection"],
+          "owasp": ["A03:2021 - Injection"],
+          "references": ["https://owasp.org/Top10/A03_2021-Injection/"]
+        }
+      }
+    },
+    {
+      "check_id": "generic.secrets.hardcoded-token",
+      "path": "config/settings.py",
+      "start": {"line": 7},
+      "end": {"line": 7},
+      "extra": {
+        "message": "Hardcoded token detected.",
+        "severity": "WARNING",
+        "fingerprint": "zzz999",
+        "lines": "TOKEN = \"synthetic-not-a-real-token\"",
+        "metadata": {"category": "security", "cwe": "CWE-798"}
+      }
+    }
+  ],
+  "errors": []
+}

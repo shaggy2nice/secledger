@@ -1,0 +1,44 @@
+{
+  "@version": "2.15.0",
+  "site": [
+    {
+      "@name": "https://dev.example.app",
+      "@host": "dev.example.app",
+      "@port": "443",
+      "alerts": [
+        {
+          "pluginid": "40012",
+          "alertRef": "40012-1",
+          "alert": "Cross Site Scripting (Reflected)",
+          "name": "Cross Site Scripting (Reflected)",
+          "riskcode": "3",
+          "confidence": "2",
+          "riskdesc": "High (Medium)",
+          "desc": "<p>Reflected XSS in the search parameter.</p>",
+          "instances": [
+            {"uri": "https://dev.example.app/search?q=1", "method": "GET", "param": "q", "evidence": "<script>"},
+            {"uri": "https://dev.example.app/find?term=x", "method": "GET", "param": "term"}
+          ],
+          "solution": "<p>Encode output on the way out.</p>",
+          "reference": "<p>https://owasp.org/www-community/attacks/xss/</p>",
+          "cweid": "79",
+          "wascid": "8"
+        },
+        {
+          "pluginid": "10038",
+          "alertRef": "10038-1",
+          "alert": "Content Security Policy (CSP) Header Not Set",
+          "riskcode": "2",
+          "confidence": "3",
+          "riskdesc": "Medium (High)",
+          "desc": "<p>No CSP header is set on the response.</p>",
+          "instances": [{"uri": "https://dev.example.app/", "method": "GET"}],
+          "solution": "<p>Set a Content-Security-Policy header.</p>",
+          "reference": "<p>https://developer.mozilla.org/docs/Web/HTTP/CSP</p>",
+          "cweid": "693",
+          "wascid": "15"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "run": {
+    "id": "2026-01-01T00-00-00Z",
+    "scanner": "demo-dast",
+    "target": "dev.example.test"
+  },
+  "findings": [
+    {
+      "id": "f1",
+      "title": "Reflected XSS in search",
+      "severity": "high",
+      "category": "xss",
+      "location": "GET https://dev.example.test/search?q=1",
+      "description": "User-controlled `q` is reflected into the response unescaped.",
+      "status": "confirmed",
+      "references": ["CWE-79"]
+    },
+    {
+      "id": "f2",
+      "title": "Verbose error discloses stack trace",
+      "severity": "low",
+      "category": "info_disclosure",
+      "location": "GET /api/v1/orders",
+      "description": "A 500 response returns a full stack trace."
+    }
+  ]
+}

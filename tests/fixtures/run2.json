@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "run": {
+    "id": "2026-02-01T00-00-00Z",
+    "scanner": "demo-dast",
+    "target": "dev.example.test"
+  },
+  "findings": [
+    {
+      "id": "a",
+      "title": "Reflected XSS (search parameter)",
+      "severity": "medium",
+      "category": "xss",
+      "location": "https://dev.example.test/search",
+      "description": "Same reflected XSS, re-observed on a later run.",
+      "status": "confirmed"
+    },
+    {
+      "id": "b",
+      "title": "SQL injection in product filter",
+      "severity": "critical",
+      "category": "sqli",
+      "location": "POST /api/v1/products:filter",
+      "description": "Filter value reaches the query unparameterized.",
+      "status": "confirmed",
+      "fingerprint": "demo-sqli-0001"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "run": {
+    "id": "2026-03-15T14-30-00Z",
+    "scanner": "my-scanner",
+    "target": "dev.example.app"
+  },
+  "findings": [
+    {
+      "id": "finding-1",
+      "title": "Server-side request forgery in webhook test endpoint",
+      "severity": "high",
+      "category": "ssrf",
+      "location": "POST https://dev.example.app/api/webhooks:test",
+      "description": "The `url` field is fetched server-side with no allowlist.\n\n```\nPOST /api/webhooks:test\n{\"url\": \"http://169.254.169.254/\"}\n```",
+      "status": "confirmed",
+      "references": ["CWE-918"]
+    },
+    {
+      "id": "finding-2",
+      "title": "Missing rate limit on login",
+      "severity": "medium",
+      "category": "auth",
+      "location": "POST /api/login",
+      "description": "No lockout or throttle on repeated failed logins.",
+      "status": "confirmed"
+    },
+    {
+      "id": "finding-3",
+      "title": "Outdated dependency with known CVE",
+      "severity": "low",
+      "category": "dependency",
+      "location": "example-lib@1.2.3",
+      "description": "example-lib 1.2.3 is affected by CVE-2025-00000.",
+      "fingerprint": "osv:CVE-2025-00000:example-lib",
+      "references": ["CVE-2025-00000"]
+    }
+  ]
+}
