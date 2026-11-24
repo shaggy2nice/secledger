@@ -12,7 +12,7 @@ license = { text = "MIT" }
 authors = [{ name = 'Harrison "Taylor" Parsons' }]
 keywords = [
     "security", "vulnerability", "findings", "triage", "ledger",
-    "gitlab", "github", "appsec", "devsecops", "issues",
+    "gitlab", "github", "jira", "appsec", "devsecops", "issues",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

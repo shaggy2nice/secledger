@@ -9,6 +9,10 @@ unit-testable without a network: tests pass a fake transport that records the
 request and returns a canned response. The default transport is a thin
 ``urllib`` wrapper (no third-party HTTP dependency), with optional CA-bundle
 support for self-hosted instances presenting a private/enterprise CA.
+
+A transport returns ``(status, body)`` and may add the response headers as a
+third element. Backends that need a header (Jira reads ``Retry-After``) use it
+when it is there; everything else ignores it.
 """
 from __future__ import annotations
 
@@ -19,8 +23,9 @@ import urllib.request
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Optional, Tuple
 
-# transport(method, url, headers, body_bytes) -> (status_code, response_bytes)
-Transport = Callable[[str, str, dict, Optional[bytes]], Tuple[int, bytes]]
+# transport(method, url, headers, body_bytes)
+#     -> (status_code, response_bytes[, response_headers])
+Transport = Callable[[str, str, dict, Optional[bytes]], Tuple[Any, ...]]
 
 
 class TrackerError(RuntimeError):
@@ -35,9 +40,9 @@ def urllib_transport(ca_bundle: str | None = None, timeout: float = 60.0) -> Tra
         req = urllib.request.Request(url, data=body, headers=headers, method=method)
         try:
             with urllib.request.urlopen(req, timeout=timeout, context=context) as resp:
-                return resp.getcode(), resp.read()
+                return resp.getcode(), resp.read(), dict(resp.headers.items())
         except urllib.error.HTTPError as exc:  # 4xx/5xx carry a body
-            return exc.code, exc.read()
+            return exc.code, exc.read(), dict(exc.headers.items()) if exc.headers else {}
 
     return _transport
 
@@ -51,6 +56,10 @@ class Tracker(ABC):
     """
 
     name: str = "tracker"
+
+    # Markup dialect of the issue body this tracker expects. The filer picks
+    # the matching renderer from ``secledger.render`` ("markdown" or "jira").
+    markup: str = "markdown"
 
     def __init__(
         self,
@@ -84,7 +93,7 @@ class Tracker(ABC):
         if payload is not None:
             body = json.dumps(payload).encode("utf-8")
             headers["Content-Type"] = "application/json"
-        status, raw = self._transport(method, url, headers, body)
+        status, raw = self._transport(method, url, headers, body)[:2]
         if status >= 400:
             snippet = raw.decode("utf-8", "replace")[:500]
             raise TrackerError(f"{self.name}: HTTP {status} for {method} {url}: {snippet}")
@@ -96,6 +105,13 @@ class Tracker(ABC):
             raise TrackerError(f"{self.name}: non-JSON response: {exc}") from exc
 
     # ---- backend contract ------------------------------------------------
+
+    def preflight(self) -> None:
+        """Optional check that the connection works, run once before filing.
+
+        Raise :class:`TrackerError` to stop the run before anything is
+        created. The default does nothing.
+        """
 
     @abstractmethod
     def create_issue(self, title: str, body: str, labels: list[str]) -> dict:

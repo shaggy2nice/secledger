@@ -35,7 +35,8 @@ go under `[project.optional-dependencies].dev`.
    `create_issue`, and `update_issue`.
 2. `register` it in `secledger/trackers/__init__.py`.
 3. Add CLI env/default wiring in `cli.py:_build_tracker`.
-4. Add tests driving it through `FakeTransport`.
+4. Add tests driving it through `FakeTransport`. (Jira also has end-to-end
+   tests against `tests/mock_jira.py`, which listens on loopback only.)
 5. Update the trackers table in the README.
 
 ## Reporting security issues

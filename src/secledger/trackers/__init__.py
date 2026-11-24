@@ -10,6 +10,7 @@ from __future__ import annotations
 from .base import Tracker, TrackerError, Transport, urllib_transport
 from .github import GitHubTracker
 from .gitlab import GitLabTracker
+from .jira import JiraError, JiraTracker
 
 _REGISTRY: dict[str, type[Tracker]] = {}
 
@@ -34,6 +35,7 @@ def available() -> list[str]:
 
 register(GitLabTracker)
 register(GitHubTracker)
+register(JiraTracker)
 
 __all__ = [
     "Tracker",
@@ -42,6 +44,8 @@ __all__ = [
     "urllib_transport",
     "GitLabTracker",
     "GitHubTracker",
+    "JiraTracker",
+    "JiraError",
     "register",
     "get_tracker_class",
     "available",

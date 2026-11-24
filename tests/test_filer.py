@@ -77,3 +77,16 @@ def test_save_called_on_each_success(tmp_path):
     saves = []
     file_ledger(ledger, tr, on_change=lambda: saves.append(1))
     assert len(saves) == len(ledger)
+
+
+def test_body_markup_follows_the_tracker():
+    ledger = seeded_ledger()
+    markdown, wiki = RecordingTracker(), RecordingTracker()
+    wiki.name, wiki.markup = "rec-jira", "jira"
+
+    file_ledger(ledger, markdown)
+    file_ledger(ledger, wiki)  # same ledger, second tracker: no collision
+
+    assert "| --- |" in markdown.created[0][1]
+    assert "h3. Finding" in wiki.created[0][1]
+    assert all({"rec", "rec-jira"} <= set(e.trackers) for e in ledger)

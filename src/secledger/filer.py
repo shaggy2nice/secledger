@@ -22,7 +22,7 @@ from typing import Callable, Optional
 
 from .ledger import Ledger
 from .models import LedgerEntry, SEVERITY_RANK
-from .render import content_fingerprint, issue_body, issue_labels, issue_title
+from .render import body_renderer, content_fingerprint, issue_labels, issue_title
 from .trackers.base import Tracker, TrackerError
 
 RenderFn = Callable[[LedgerEntry], str]
@@ -47,9 +47,12 @@ def file_ledger(
     dry_run: bool = False,
     on_change: Optional[Callable[[], None]] = None,
     title_fn: RenderFn = issue_title,
-    body_fn: RenderFn = issue_body,
+    body_fn: Optional[RenderFn] = None,
     labels_fn: LabelsFn = issue_labels,
 ) -> list[FileOutcome]:
+    if body_fn is None:
+        # Markdown for GitHub/GitLab, wiki markup for Jira.
+        body_fn = body_renderer(getattr(tracker, "markup", "markdown"))
     floor = SEVERITY_RANK.get((min_severity or "").lower(), 99)
     outcomes: list[FileOutcome] = []
 

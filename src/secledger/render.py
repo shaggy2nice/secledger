@@ -1,7 +1,9 @@
-"""Render a ledger entry to a tracker-neutral Markdown issue body.
+"""Render a ledger entry to an issue title, labels, and body.
 
 GitHub and GitLab both accept GitHub-Flavored Markdown natively, so one
-renderer serves both. The body is deterministic: the same entry always
+Markdown renderer serves both. Jira takes its own wiki markup, so it gets a
+second renderer with the same content; :func:`body_renderer` picks one from a
+tracker's ``markup``. Every body is deterministic: the same entry always
 produces byte-identical output, which is what makes the "skip unchanged on
 re-file" check reliable (see ``trackers.base``).
 """
@@ -61,6 +63,71 @@ def issue_body(entry: LedgerEntry) -> str:
         "closing this as one issue._"
     )
     return "\n".join(lines)
+
+
+def _noformat(lines: list[str]) -> list[str]:
+    """Wrap lines in a Jira ``{noformat}`` block so they show exactly as written.
+
+    Finding text is free-form, and Jira wiki markup reads ``{...}``, ``[...]``
+    and ``|`` as syntax: a location such as ``GET /api/{id}`` would render as
+    an "unknown macro" error. So everything that came from a scanner goes
+    inside a block instead of being escaped character by character.
+    """
+    safe = [ln.replace("{noformat}", "{ noformat }") for ln in lines]
+    return ["{noformat}", *safe, "{noformat}"]
+
+
+def issue_body_jira(entry: LedgerEntry) -> str:
+    """The same content as :func:`issue_body`, in Jira wiki markup."""
+    lines: list[str] = []
+    lines.append(f"_Filed by secledger from ledger entry {entry.ledger_id}._")
+    lines.append("")
+    lines.append("h3. Finding")
+    lines += _noformat([
+        f"ledger id:  {entry.ledger_id}",
+        f"category:   {entry.category}",
+        f"severity:   {entry.severity}",
+        f"status:     {entry.status or 'unverified'}",
+        f"signature:  {entry.signature}",
+        f"seen:       {entry.times_seen}x, first {entry.first_seen}, "
+        f"last {entry.last_seen}",
+    ])
+    lines.append("")
+
+    locations = sorted({a.location for a in entry.aliases if a.location})
+    if locations:
+        lines.append("h3. Locations")
+        lines += _noformat(locations)
+        lines.append("")
+
+    lines.append("h3. Observed in")
+    observed = []
+    for a in entry.aliases:
+        status = f", {a.status}" if a.status else ""
+        observed.append(
+            f"{a.run} / {a.id} [{a.severity}{status}] {a.title}".rstrip()
+        )
+    lines += _noformat(observed)
+    lines.append("")
+    lines.append(
+        "_Dedup is a deterministic signature, so confirm the merge before "
+        "closing this as one issue._"
+    )
+    return "\n".join(lines)
+
+
+BODY_RENDERERS = {"markdown": issue_body, "jira": issue_body_jira}
+
+
+def body_renderer(markup: str):
+    """The body renderer for a tracker's markup dialect (``Tracker.markup``)."""
+    try:
+        return BODY_RENDERERS[markup]
+    except KeyError:
+        raise ValueError(
+            f"no body renderer for markup {markup!r}; "
+            f"available: {', '.join(sorted(BODY_RENDERERS))}"
+        )
 
 
 def body_fingerprint(body: str) -> str:

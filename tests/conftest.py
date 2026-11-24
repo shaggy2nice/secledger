@@ -11,7 +11,9 @@ class FakeTransport:
     """Records requests and returns canned responses.
 
     Each response is ``(status_code, payload_dict)``; payloads are JSON-encoded
-    back to the caller exactly as a real tracker would return them.
+    back to the caller exactly as a real tracker would return them. A response
+    may add a headers dict as a third element, and an exception instance in
+    the list is raised instead of returned (a timeout, a dropped connection).
     """
 
     def __init__(self, responses):
@@ -27,8 +29,14 @@ class FakeTransport:
                 "body": json.loads(body) if body else None,
             }
         )
-        status, payload = self._responses.pop(0)
-        return status, json.dumps(payload).encode()
+        response = self._responses.pop(0)
+        if isinstance(response, BaseException):
+            raise response
+        status, payload = response[0], response[1]
+        encoded = json.dumps(payload).encode()
+        if len(response) > 2:
+            return status, encoded, response[2]
+        return status, encoded
 
 
 class RecordingTracker:

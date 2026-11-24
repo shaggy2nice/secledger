@@ -10,6 +10,9 @@ Tracker connection details come from flags or environment variables:
     GitLab:  GITLAB_URL, GITLAB_PROJECT, GITLAB_TOKEN, [GITLAB_TOKEN_TYPE]
     GitHub:  GITHUB_API_URL (default https://api.github.com),
              GITHUB_REPO, GITHUB_TOKEN
+    Jira:    JIRA_URL, JIRA_PROJECT (project key), JIRA_TOKEN,
+             JIRA_EMAIL (Jira Cloud; leave unset for a Data Center token),
+             [JIRA_TOKEN_TYPE], [JIRA_ISSUE_TYPE], [JIRA_SET_PRIORITY]
     Any:     SECLEDGER_CA_BUNDLE  (CA file for a self-hosted instance)
 """
 from __future__ import annotations
@@ -85,6 +88,7 @@ def _build_tracker(args: argparse.Namespace):
     name = args.tracker
     cls = get_tracker_class(name)
     ca = args.ca_bundle or os.environ.get("SECLEDGER_CA_BUNDLE")
+    extra: dict = {}
 
     if name == "gitlab":
         base = args.url or os.environ.get("GITLAB_URL", "https://gitlab.com")
@@ -96,6 +100,24 @@ def _build_tracker(args: argparse.Namespace):
         project = args.project or os.environ.get("GITHUB_REPO", "")
         token = args.token or os.environ.get("GITHUB_TOKEN", "")
         token_type = args.token_type or "bearer"
+    elif name == "jira":
+        base = args.url or os.environ.get("JIRA_URL", "")
+        project = args.project or os.environ.get("JIRA_PROJECT", "")
+        token = args.token or os.environ.get("JIRA_TOKEN", "")
+        email = args.email or os.environ.get("JIRA_EMAIL", "")
+        # Jira Cloud signs in with email + API token (basic); Data Center
+        # with a personal access token (bearer).
+        token_type = (
+            args.token_type
+            or os.environ.get("JIRA_TOKEN_TYPE")
+            or ("basic" if email else "bearer")
+        )
+        extra = {
+            "email": email,
+            "issue_type": args.issue_type or os.environ.get("JIRA_ISSUE_TYPE", "Task"),
+            "set_priority": os.environ.get("JIRA_SET_PRIORITY", "true").strip().lower()
+            not in ("false", "0", "no", "off"),
+        }
     else:  # pragma: no cover - future backends supply their own defaults
         base = args.url or ""
         project = args.project or ""
@@ -108,6 +130,7 @@ def _build_tracker(args: argparse.Namespace):
         token=token,
         token_type=token_type,
         ca_bundle=ca,
+        **extra,
     )
 
 
@@ -131,6 +154,14 @@ def cmd_file(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
+
+    if not args.dry_run:
+        # Fail once, before anything is created, if the connection is wrong.
+        try:
+            tracker.preflight()
+        except TrackerError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
 
     outcomes = file_ledger(
         ledger,
@@ -196,7 +227,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--url", help="tracker base URL (else per-tracker env var)")
     sp.add_argument("--project", help="project id/path or owner/repo (else env)")
     sp.add_argument("--token", help="access token (else per-tracker env var)")
-    sp.add_argument("--token-type", help="token / bearer")
+    sp.add_argument("--token-type", help="token / bearer (jira: basic / bearer)")
+    sp.add_argument("--email", help="jira: account email for Jira Cloud (else JIRA_EMAIL)")
+    sp.add_argument("--issue-type", help="jira: issue type name (default: Task)")
     sp.add_argument("--ca-bundle", help="CA file for a self-hosted instance")
     sp.add_argument("--min-severity", choices=list(SEVERITIES),
                     help="file this severity and above (default: all)")

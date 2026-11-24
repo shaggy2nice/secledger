@@ -21,7 +21,7 @@ cleanly into locked-down and air-gapped environments. Findings come in as a
 small, tool-agnostic JSON shape, so **any** scanner can feed it.
 
 ```
-scanner run ─► findings.json ─► secledger ingest ─► ledger.json ─► secledger file ─► GitLab / GitHub issues
+scanner run ─► findings.json ─► secledger ingest ─► ledger.json ─► secledger file ─► GitLab / GitHub / Jira issues
                                       (dedupe)                         (idempotent)
 ```
 
@@ -157,6 +157,7 @@ several trackers at once without collision.
 | --- | --- | --- | --- |
 | `gitlab` | numeric id or `group/sub/project` | `GITLAB_TOKEN` | `GITLAB_URL` for self-hosted; `GITLAB_TOKEN_TYPE=bearer` for OAuth |
 | `github` | `owner/repo` | `GITHUB_TOKEN` | `GITHUB_API_URL` for Enterprise Server |
+| `jira` | project key (`SEC`) | `JIRA_TOKEN` | `JIRA_URL` is required; set `JIRA_EMAIL` for Jira Cloud, leave it unset for a Data Center token |
 
 Self-hosted instance with a private/enterprise CA? Point `SECLEDGER_CA_BUNDLE`
 (or `--ca-bundle`) at the CA chain.
@@ -164,6 +165,41 @@ Self-hosted instance with a private/enterprise CA? Point `SECLEDGER_CA_BUNDLE`
 ```bash
 secledger trackers        # list available backends
 ```
+
+### Jira
+
+```bash
+export JIRA_URL=https://your-site.atlassian.net
+export JIRA_PROJECT=SEC
+export JIRA_EMAIL=you@example.com         # Jira Cloud: email + API token
+export JIRA_TOKEN=xxxxxxxx                # Data Center: a personal access token, no JIRA_EMAIL
+secledger file --tracker jira --dry-run
+secledger file --tracker jira --min-severity high
+```
+
+- **One backend for Cloud and Data Center.** It uses REST API v2, which both
+  serve. Issues are created as `Task`; change it with `JIRA_ISSUE_TYPE` or
+  `--issue-type`.
+- **Checked before anything is created.** The token and project are verified
+  first, so a wrong credential is one clear error, not one per finding.
+- **Retries that cannot duplicate.** A create is retried only when Jira says
+  it did not process it (429 or 503), waiting at least `Retry-After`. After a
+  timeout or a 502/504 the issue may already exist, so secledger reports the
+  failure instead of sending it again. Check Jira before re-running in that
+  case.
+- **Priority follows severity** (critical → Highest … info → Lowest). A
+  project that does not allow priority on create is detected on the first
+  issue and the run continues without it; `JIRA_SET_PRIORITY=false` skips it
+  from the start.
+- **Wiki markup, not Markdown.** Bodies are rendered for Jira, with scanner
+  text kept in `{noformat}` blocks. Whitespace in labels becomes `-`.
+
+No Jira site to hand? `python tests/mock_jira.py` starts a local mock and
+prints the variables to export.
+
+> **Status:** the Jira backend is tested against that mock server on Python
+> 3.9–3.12. It has not yet been run against a live Jira Cloud or Data Center
+> site.
 
 ## Extending
 
@@ -186,10 +222,11 @@ class MyTracker(Tracker):
                      {"body": body, "labels": labels})
 ```
 
-Swap the dedup strategy with `secledger.signature.set_default_strategy(fn)`.
+A tracker that needs more can set `markup` (which body renderer it gets) and
+override `preflight()` (a connection check run once before filing); see
+[`trackers/jira.py`](src/secledger/trackers/jira.py).
 
-> **Roadmap:** a Jira backend is a natural next contribution — the `Tracker`
-> interface is ready for it. PRs welcome.
+Swap the dedup strategy with `secledger.signature.set_default_strategy(fn)`.
 
 ## Security notes
 
